@@ -2,16 +2,14 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Collections.Generic;
-using System.Collections;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using System.Threading;
 using ServiceStack.Text;
 using Metricus.Plugin;
 
 namespace Metricus.Plugins
 {
-	public class PerfCounter : InputPlugin, IInputPlugin
+    public class PerfCounter : InputPlugin, IInputPlugin
 	{
 		private List<Category> categories = new List<Category>();
 		private PerfCounterConfig config;
@@ -153,7 +151,7 @@ namespace Metricus.Plugins
 
             public void EnableRefresh()
             {
-                if (dynamicInterval == 0) dynamicInterval = 30000;
+                if (dynamicInterval == 0) dynamicInterval = 300000;
                 UpdateTimer = UpdateTimer ?? new System.Timers.Timer(dynamicInterval);
                 UpdateTimer.Elapsed += (m, e) => { this.LoadInstances(); };
                 UpdateTimer.Start();
@@ -174,6 +172,7 @@ namespace Metricus.Plugins
                         var pc = counter.Value;
                         try
                         {
+							// create a metric based on the performance counter
                             var newMetric = new metric(pc.CategoryName, pc.CounterName, pc.InstanceName, pc.NextValue(), time);
                             metrics.Add(newMetric);
                         }
@@ -192,7 +191,7 @@ namespace Metricus.Plugins
 				//if (category.dynamic) category.LoadInstances ();
                 category.RemoveStaleCounters(staleCounterKeys);
 			}
-			Console.WriteLine ("Collected {0} metrics", metrics.Count);
+			//Console.WriteLine ("Collected {0} metrics", metrics.Count);
 
             return metrics;
 		}

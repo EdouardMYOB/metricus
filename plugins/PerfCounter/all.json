@@ -160,6 +160,7 @@
 			],
 			"instances": [
 				"_Total",
+				"chef_runner_service",
 				"metricus",
 				"nxlog"
 			],
@@ -173,4 +174,6 @@
 			]
 		}
 	]
+}{
+
 }

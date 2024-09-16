@@ -1,20 +1,17 @@
 using System;
 using System.Timers;
-using Metricus;
 using Metricus.Plugin;
 using System.Threading;
-using System.Diagnostics;
 using System.IO;
-using System.Text;
-using System.Reflection;
 using System.Collections.Generic;
-using System.Collections;
+using System.Net.Http;
 using Topshelf;
 using ServiceStack.Text;
+using System.Threading.Tasks;
 
 namespace Metricus
 {
-	class MetricusConfig
+    class MetricusConfig
 	{
 		public string Host { get; set; }
 		public int Interval { get; set; }
@@ -32,23 +29,25 @@ namespace Metricus
 		public MetricusService() 
 		{
 			config = JsonSerializer.DeserializeFromString<MetricusConfig> (File.ReadAllText ("config.json"));
-			Console.WriteLine("Config loaded: {0}", config.Dump() );
+
+            Console.WriteLine("Config loaded: {0}", config.Dump() );
 
 			_timer = new System.Timers.Timer (config.Interval);
 			_timer.Elapsed += new ElapsedEventHandler (Tick);
 			pluginManager = new PluginManager (config.Host);
 		}
 
-		public bool Start(HostControl hostControl)
+
+        public bool Start(HostControl hostControl)
 		{
-			this.LoadPlugins ();
-			_timer.Start ();
+			this.LoadPlugins();
+			_timer.Start();
 			return true;
 		}
 
 		public bool StartRaw()
 		{
-			this.LoadPlugins ();
+			this.LoadPlugins();
 			_timer.Start ();
 			return true;
 		}
@@ -110,7 +109,6 @@ namespace Metricus
 
 		private void Tick (object source, ElapsedEventArgs e)
 		{
-			Console.WriteLine ("Tick");
             if (Monitor.TryEnter(workLocker))
             {
                 try

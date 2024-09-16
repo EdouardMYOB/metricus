@@ -1,13 +1,9 @@
-using System;
-using Metricus;
-using System.Diagnostics;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace Metricus.Plugin
 {
 
-	public interface IInputPlugin
+    public interface IInputPlugin
 	{
 		List<metric> Work();
 	}

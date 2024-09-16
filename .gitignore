@@ -5,6 +5,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+.vs/
 
 # Build results
 [Dd]ebug/
@@ -185,6 +186,20 @@ FakesAssemblies/
 Hosts/DevOps.Hosts.Web/Web.config
 Data/DevOps.Data/App.config
 
+# MacOS Finder Hidden Files
+*.DS_Store
+# Log Files
+*log.txt
+
+# NCrunch
+*.ncrunch*
+.*crunch*.local.xml
+
+# Specflow generated files
+*.feature.cs
 #MonoDevelop
 *.pidb
 *.userprefs
+#Jetbrains editor config
+.idea/
+store/

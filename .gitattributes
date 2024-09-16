@@ -1,0 +1,41 @@
+# Default text behaviour
+#
+* text=lf
+
+
+# Mark cs files as being csharp for diffs
+#
+*.cs     diff=csharp
+
+
+# Force shell files to LF
+*.sh       text eol=lf
+
+
+# Web file handling
+# See the following for more: https://github.com/alexkaratarakis/gitattributes/blob/master/Web.gitattributes
+#
+*.cshtml   text
+*.css      text
+*.htm      text
+*.html     text
+*.js       text
+*.json     text
+
+
+
+# Force CRLF for Visual Studio files
+#
+*.sln        text eol=lf
+*.csproj     text eol=lf
+*.vbproj     text eol=lf
+*.vcxproj    text eol=lf
+*.vcproj     text eol=lf
+*.dbproj     text eol=lf
+*.fsproj     text eol=lf
+*.lsproj     text eol=lf
+*.wixproj    text eol=lf
+*.modelproj  text eol=lf
+*.sqlproj    text eol=lf
+*.wmaproj    text eol=lf
+

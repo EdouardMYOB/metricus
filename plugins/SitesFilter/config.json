@@ -1,12 +1,47 @@
 {
-  "Categories" : {
-    "ASP.NET Applications" : {
-      "Filters": ["lmw3svc"],
-      "PreserveOriginal" : false	
-    },
-    "Process": {
-      "Filters": [ "w3wp" ],
-      "PreserveOriginal": false
-    }
-  }
+	"Debug": false,
+	"Categories": {
+		"ASP.NET Applications": {
+			"PreserveOriginal": false,
+			"Filters": [
+				"lmw3svc"
+			]
+		},
+		"Process": {
+			"PreserveOriginal": false,
+			"Filters": [
+				"w3wp.process"
+			]
+		},
+		"ASP.NET": {
+			"Filters": [
+				"lmw3svc"
+			],
+			"PreserveOriginal": false
+		},
+		".NET CLR Exceptions": {
+			"Filters": [
+				"w3wp.net"
+			],
+			"PreserveOriginal": false
+		},
+		".NET CLR LocksAndThreads": {
+			"Filters": [
+				"w3wp.net"
+			],
+			"PreserveOriginal": false
+		},
+		".NET CLR Memory": {
+			"Filters": [
+				"w3wp.net"
+			],
+			"PreserveOriginal": false
+		},
+		"W3SVC_W3WP": {
+			"Filters": [
+				"w3svc"
+			],
+			"PreserveOriginal": false
+		}
+	}
 }

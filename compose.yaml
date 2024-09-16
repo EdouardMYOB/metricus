@@ -1,0 +1,15 @@
+services:
+  graphite:
+    image: graphiteapp/graphite-statsd
+    restart: unless-stopped
+    volumes:
+      - ./store/graphite/conf:/opt/graphite/conf
+      - ./store/graphite/storage:/opt/graphite/storage
+      - ./store/statsd/conf:/opt/statsd/conf
+    ports:
+      - 89:80
+      - 2003-2004:2003-2004
+      - 2023-2024:2023-2024
+      - 8125:8125
+      - 8126:8126
+

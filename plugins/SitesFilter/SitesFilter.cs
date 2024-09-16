@@ -1,11 +1,10 @@
+using Microsoft.Web.Administration;
+using ServiceStack.Text;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Collections.Generic;
-using ServiceStack.Text;
-using Microsoft.Web.Administration;
 using System.Text.RegularExpressions;
-using System.Linq;
 
 namespace Metricus.Plugin
 {
@@ -24,9 +23,11 @@ namespace Metricus.Plugin
 
 		private class SitesFilterConfig {
 			public Dictionary<string,ConfigCategory> Categories { get; set; }
-		}
+            public bool Debug { get; set; }
 
-		private class ConfigCategory {
+        }
+
+        private class ConfigCategory {
             public List<string> Filters { get; set; }
 			public bool PreserveOriginal { get; set; }
 		}
@@ -39,7 +40,7 @@ namespace Metricus.Plugin
 			Console.WriteLine ("Loaded config : {0}", config.Dump ());
 			siteIDtoName = new Dictionary<int, string> ();
 			this.LoadSites ();
-            LoadSitesTimer = new System.Timers.Timer(60000);
+            LoadSitesTimer = new System.Timers.Timer(300000);
             LoadSitesTimer.Elapsed += (o, e) => this.LoadSites();
             LoadSitesTimer.Start();
 		}
@@ -50,10 +51,10 @@ namespace Metricus.Plugin
 		    {
 		        var filterMap = new Dictionary<string, ICategoryFilter>
 		        {
-		            {"w3wp.process", new FilterWorkerPoolProcesses(ServerManager, "Process", "ID Process")},
-		            {"w3wp.net", new FilterWorkerPoolProcesses(ServerManager, ".NET CLR Memory", "Process ID")},
-		            {"lmw3svc", new FilterAspNetC(this.siteIDtoName)},
-		            {"w3svc", new FilterW3SvcW3Wp()}
+		            {"w3wp.process", new FilterWorkerPoolProcesses(ServerManager, "Process", "ID Process", config.Debug)},
+		            {"w3wp.net", new FilterWorkerPoolProcesses(ServerManager, ".NET CLR Memory", "Process ID", config.Debug)},
+		            {"lmw3svc", new FilterAspNetC(this.siteIDtoName, config.Debug)},
+		            {"w3svc", new FilterW3SvcW3Wp(config.Debug)}
 		        };
 
 		        foreach (var category in config.Categories)
@@ -71,62 +72,74 @@ namespace Metricus.Plugin
 
             private ServerManager serverManager;
             private readonly string processIdCounter;
+            private readonly bool isDebug;
             private readonly string processIdCategory;
 
-            public FilterWorkerPoolProcesses(ServerManager serverManager, string processIdCategory, string processIdCounter)
+            public FilterWorkerPoolProcesses(ServerManager serverManager, string processIdCategory, string processIdCounter, bool isDebug = false)
             {
                 this.serverManager = serverManager;
                 this.processIdCounter = processIdCounter;
+                this.isDebug = isDebug;
                 this.processIdCategory = processIdCategory;
             }
 
             public List<metric> Filter(List<metric> metrics, string categoryName, bool preserveOriginal)
             {
                 // "Listen" to the process id counters to map instance names to process id's
-                metric m;
-                int wpId;
+                metric currentMetric;
                 var originalMetricsCount = metrics.Count;
                 for (int x = 0; x < originalMetricsCount; x++)
                 {
-                    m = metrics[x];
+                    currentMetric = metrics[x];
 
-                    if (!processIdCategory.Equals(m.category, StringComparison.InvariantCultureIgnoreCase))
-                        continue;
-
-                    if (m.type.Equals(processIdCounter, StringComparison.InvariantCultureIgnoreCase))
+                    if (!processIdCategory.Equals(currentMetric.category, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        WpNamesToIds[m.instance] = (int) m.value;
+                        continue;
+                    }
+
+                    if (currentMetric.type.Equals(processIdCounter, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        WpNamesToIds[currentMetric.instance] = (int) currentMetric.value;
                         continue;
                     }
                 }
                 for (int x = 0; x < originalMetricsCount; x++)
                 { 
-                    m = metrics[x];
+                    currentMetric = metrics[x];
 
-                    if(!m.category.Equals(categoryName, StringComparison.InvariantCultureIgnoreCase))
+                    if(!currentMetric.category.Equals(categoryName, StringComparison.InvariantCultureIgnoreCase))
+                    {
                         continue;
+                    }
 
-                    if (m.category.Equals(processIdCategory, StringComparison.InvariantCultureIgnoreCase) &&
-                        m.type.Equals(processIdCounter, StringComparison.InvariantCultureIgnoreCase))
-                        continue;   // Don't transform the "Process ID" values as all the other transformations rely on it
+                    if (currentMetric.category.Equals(processIdCategory, StringComparison.InvariantCultureIgnoreCase) &&
+                        currentMetric.type.Equals(processIdCounter, StringComparison.InvariantCultureIgnoreCase))
+                    {
 
-                    if (m.instance.StartsWith("w3wp", StringComparison.Ordinal) && WpNamesToIds.TryGetValue(m.instance, out wpId))
+                        continue; // Don't transform the "Process ID" values as all the other transformations rely on it
+                    }
+                    if (currentMetric.instance.StartsWith("w3wp", StringComparison.Ordinal) && WpNamesToIds.TryGetValue(currentMetric.instance, out var wpId))
                     {
                         for (int y = 0; y < serverManager.WorkerProcesses.Count; y++)
                         {
                             if (serverManager.WorkerProcesses[y].ProcessId == wpId)                            
                             {
-                                //Console.WriteLine($"{categoryName}: {m.instance} -> {serverManager.WorkerProcesses[y].AppPoolName}");
-                                m.instance = serverManager.WorkerProcesses[y].AppPoolName;
-                                switch(preserveOriginal)
+                                var siteName = serverManager.WorkerProcesses[y].AppPoolName;
+
+                                var newMetric = currentMetric;
+
+                                newMetric.site = siteName;
+                                newMetric.instance = null;
+                                if(isDebug)
                                 {
-                                    case true:
-                                        metrics.Add(m);
-                                        break;
-                                    case false:
-                                        metrics[x] = m;
-                                        break;
+                                    Console.WriteLine($"old: {currentMetric}");
+                                    Console.WriteLine($"new: {newMetric}");
                                 }
+
+                                if (preserveOriginal)
+                                    metrics.Add(currentMetric);
+                                else
+                                    metrics[x] = newMetric;
                             }
                         }
                     }                    
@@ -137,7 +150,13 @@ namespace Metricus.Plugin
 
 	    public class FilterW3SvcW3Wp : ICategoryFilter
         {
-	        private static Regex AppPoolRegex = new Regex(@"\d+_(?<AppPool>.*)");
+            private readonly bool _isDebug;
+            private static Regex AppPoolRegex = new Regex(@"\d+_(?<AppPool>.*)");
+
+            public FilterW3SvcW3Wp(bool isDebug = false)
+            {
+                _isDebug = isDebug;
+            }
 
             public List<metric> Filter(List<metric> metrics, string categoryName, bool preserveOriginal)
             {
@@ -145,10 +164,10 @@ namespace Metricus.Plugin
 
                 foreach (var metric in metrics)
                 {
-                    var newMetric = metric;
-
+                    
                     if (!metric.category.Equals(categoryName, StringComparison.InvariantCultureIgnoreCase))
                     {
+                        // not interested in this metric
                         returnMetrics.Add(metric);
                         continue;
                     }
@@ -156,15 +175,23 @@ namespace Metricus.Plugin
                     var match = AppPoolRegex.Match(metric.instance);
                     if (!match.Success)
                     {
+                        // this metric doesn't have an app pool name in the instance name
                         returnMetrics.Add(metric);
                     }
                     else
                     {
-                        var appPool = match.Groups["AppPool"].Value;
+                        //grab the app pool name and name the metric instance to this
+                        var siteName = match.Groups["AppPool"].Value;
 
-                        newMetric.instance = appPool;
-                        //Console.WriteLine($"{categoryName}: {metric.instance} -> {newMetric.instance}");
-                        returnMetrics.Add(newMetric);
+                        var newMetric = metric;
+                        newMetric.site = siteName;
+                        newMetric.instance = siteName;
+
+                        if(_isDebug)
+                        {
+                            Console.WriteLine($"old: {metric}");
+                            Console.WriteLine($"new: {newMetric}");
+                        }
 
                         if (preserveOriginal)
                             returnMetrics.Add(metric);
@@ -182,10 +209,12 @@ namespace Metricus.Plugin
             private static Regex MatchRoot = new Regex("ROOT_?");
 
             private readonly Dictionary<int, string> siteIdsToNames;
+            private readonly bool _isDebug;
 
-            public FilterAspNetC(Dictionary<int, string> siteIdsToNames)
+            public FilterAspNetC(Dictionary<int, string> siteIdsToNames, bool isDebug = false)
             {
                 this.siteIdsToNames = siteIdsToNames;
+                _isDebug = isDebug;
             }
 
             public List<metric> Filter(List<metric> metrics, string categoryName, bool preserveOriginal)
@@ -193,6 +222,7 @@ namespace Metricus.Plugin
                 var returnMetrics = new List<metric>();
                 foreach (var metric in metrics)
                 {
+                    // copy 
                     var newMetric = metric;
 
                     if (!metric.category.Equals(categoryName, StringComparison.InvariantCultureIgnoreCase))
@@ -205,11 +235,16 @@ namespace Metricus.Plugin
                     {
                         var match = MatchPathWithId.Match(metric.instance);
                         var id = match.Groups[1].Value;
-                        string siteName;
-                        if (siteIdsToNames.TryGetValue(int.Parse(id), out siteName))
+                        if (siteIdsToNames.TryGetValue(int.Parse(id), out string siteName))
                         {
-                            newMetric.instance = Regex.Replace(metric.instance, "_LM_W3SVC_(\\d+)_ROOT_?", siteName);
-                            //Console.WriteLine($"{categoryName}: {metric.instance} -> {newMetric.instance}");
+                            newMetric.site = siteName;
+                            newMetric.instance = siteName;
+                            if (_isDebug)
+                            {
+                                Console.WriteLine($"old: {metric}");
+                                Console.WriteLine($"new: {newMetric}");
+                            }
+                            
                             returnMetrics.Add(newMetric);
                         }
                         if (preserveOriginal)
@@ -220,9 +255,13 @@ namespace Metricus.Plugin
                 }
                 return returnMetrics;
             }
+
         }
-		
-		public void LoadSites() {
+
+        public static string SiteNameReplacement(string siteName) => $"##{siteName}##";
+
+
+        public void LoadSites() {
 		    lock (RefreshLock)
 		    {
 		        try
@@ -237,9 +276,9 @@ namespace Metricus.Plugin
 
 		            this.siteIDtoName.PrintDump();
 		        }
-		        catch (Exception)
+		        catch (Exception ex)
                 {
-                    Console.WriteLine("Exception caught while loading IIS site information");
+                    Console.WriteLine($"Exception {ex} while loading IIS site information");
                 }
 		    }
         } 

@@ -1,10 +1,10 @@
 {
-  "Host" : "laptop_co_nz",
-  "Interval" : "2000",
-  "ActivePlugins" : [
-  	"PerformanceCounter",
-  	"SitesFilter",
-  	"GraphiteOut",
-  	"ConsoleOut"
+  "Host": "unused_graphite_web_udp_hostname",
+  "Interval": "10000",
+  "ActivePlugins": [
+    "PerformanceCounter",
+    "SitesFilter",
+    "GraphiteOut",
+    "#COMMENT_ConsoleOut"
   ]
 }
